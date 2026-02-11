@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I See The Light ✨</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at bottom, #1a0b2e 0%, #000000 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* The "Hint" text at the bottom */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            animation: fadePulse 3s infinite;
+        }
+
+        /* The Message Popup (Modal) */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 250, 240, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(255, 165, 0, 0.6);
+            text-align: center;
+            max-width: 80%;
+            z-index: 10;
+            border: 2px solid #ffd700;
+        }
+
+        #modal h2 {
+            color: #d35400;
+            margin-top: 0;
+            font-family: 'Georgia', serif;
+        }
+
+        #modal p {
+            font-size: 1.2rem;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        #closeBtn {
+            margin-top: 20px;
+            padding: 10px 25px;
+            background: #d35400;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        @keyframes fadePulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hint">Tap a lantern to make a wish...</div>
+    
+    <canvas id="skyCanvas"></canvas>
+
+    <div id="modal">
+        <h2 id="modalTitle">To My Love</h2>
+        <p id="modalText">Message goes here...</p>
+        <button id="closeBtn">Close</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('skyCanvas');
+        const ctx = canvas.getContext('2d');
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modalText');
+        const closeBtn = document.getElementById('closeBtn');
+
+        let width, height;
+        let lanterns = [];
+        let animationId;
+        let isPaused = false;
+
+        // --- CUSTOMIZE YOUR MESSAGES HERE ---
+        const loveMessages = [
+            "You are my favorite adventure.",
+            "I love you more than there are stars in the sky.",
+            "You light up my darkest days.",
+            "I want to hold your hand at 80 and say 'we made it'.",
+            "You are the best thing I never planned for.",
+            "Every love story is beautiful, but ours is my favorite.",
+            "You make my heart smile.",
+            "Home is wherever I'm with you.",
+            "I love you to the moon and back.",
+            "Thank you for being my peace.",
+            "You are my sun, my moon, and all my stars.",
+            "Just looking at you makes me happy."
+        ];
+
+        // Resize canvas to full screen
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        class Lantern {
+            constructor() {
+                this.reset(true); // true = randomize Y position initially
+            }
+
+            reset(initial = false) {
+                this.x = Math.random() * width;
+                // If initial, scatter them all over screen. If not, start at bottom.
+                this.y = initial ? Math.random() * height : height + 50;
+                
+                // Random size creates "depth" (small = far, big = close)
+                this.size = Math.random() * 20 + 10; // width between 10 and 30
+                this.height = this.size * 1.4;       // height is proportional
+                
+                // Speed depends on size (closer/bigger objects appear to move faster)
+                this.speed = this.size * 0.05 + 0.2; 
+                
+                // Swaying motion
+                this.angle = Math.random() * Math.PI * 2;
+                this.swingSpeed = Math.random() * 0.02 + 0.01;
+                
+                // Color variations (Warm Golds/Oranges)
+                const colors = ['#ffaa00', '#ffd700', '#ff8c00', '#ffcc33'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Assign a random message
+                this.message = loveMessages[Math.floor(Math.random() * loveMessages.length)];
+            }
+
+            update() {
+                if (isPaused) return;
+
+                this.y -= this.speed; // Move up
+                this.x += Math.sin(this.angle) * 0.5; // Slight sway
+                this.angle += this.swingSpeed;
+
+                // Reset when it goes off top of screen
+                if (this.y < -50) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 20; // The glow effect
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                
+                // Draw the lantern (rectangle with rounded top)
+                ctx.fillRect(this.x, this.y, this.size, this.height);
+                
+                // Draw the little flame inside (lighter center)
+                ctx.fillStyle = '#fff';
+                ctx.globalAlpha = 0.6;
+                ctx.fillRect(this.x + this.size * 0.3, this.y + this.height * 0.4, this.size * 0.4, this.height * 0.3);
+                
+                ctx.restore();
+            }
+        }
+
+        function init() {
+            resize();
+            lanterns = [];
+            // Create 100 lanterns
+            for (let i = 0; i < 80; i++) {
+                lanterns.push(new Lantern());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw background stars (optional, simple dots)
+            ctx.fillStyle = '#FFF';
+            for(let i=0; i<5; i++) {
+                let sx = Math.random() * width;
+                let sy = Math.random() * height;
+                ctx.globalAlpha = Math.random();
+                ctx.fillRect(sx, sy, 1, 1);
+            }
+            ctx.globalAlpha = 1;
+
+            lanterns.forEach(lantern => {
+                lantern.update();
+                lantern.draw();
+            });
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // --- INTERACTION LOGIC ---
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Check if we clicked a lantern
+            // We loop backwards so we click the "top" ones first
+            for (let i = lanterns.length - 1; i >= 0; i--) {
+                const l = lanterns[i];
+                
+                // Simple hit detection
+                if (
+                    mouseX >= l.x - 10 && // -10 gives a little padding (easier to click)
+                    mouseX <= l.x + l.size + 10 &&
+                    mouseY >= l.y - 10 &&
+                    mouseY <= l.y + l.height + 10
+                ) {
+                    openModal(l.message);
+                    break; 
+                }
+            }
+        });
+
+        function openModal(msg) {
+            isPaused = true; // Pause animation
+            modalText.innerText = msg;
+            modal.style.display = 'block';
+        }
+
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            isPaused = false; // Resume animation
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', resize);
+
+        // Start
+        init();
+        animate();
+
+    </script>
+</body>
+</html>
